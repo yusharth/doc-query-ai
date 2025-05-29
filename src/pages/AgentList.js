@@ -193,7 +193,7 @@ function AgentList() {
         <DialogTitle>Delete Agent</DialogTitle>
         <DialogContent>
           {deleteError ? (
-            <Alert severity="error" sx={{ mt: 2 }}>
+            <Alert severity="error\" sx={{ mt: 2 }}>
               {deleteError}
             </Alert>
           ) : (
