@@ -39,7 +39,7 @@ function Chat() {
     setIsLoading(true);
 
     try {
-      const response = await fetch('http://localhost:8000/chat/', {
+      const response = await fetch('https://doc-query-backend.onrender.com/chat/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -157,4 +157,4 @@ function Chat() {
   );
 }
 
-export default Chat; 
+export default Chat;

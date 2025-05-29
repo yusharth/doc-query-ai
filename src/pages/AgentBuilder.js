@@ -58,7 +58,7 @@ function AgentBuilder() {
     formData.append('file', selectedFile);
 
     try {
-      const response = await fetch('http://localhost:8000/upload/', {
+      const response = await fetch('https://doc-query-backend.onrender.com/upload/', {
         method: 'POST',
         body: formData,
       });
@@ -95,7 +95,7 @@ function AgentBuilder() {
     };
 
     try {
-      const response = await fetch('http://localhost:8000/create_agent/', {
+      const response = await fetch('https://doc-query-backend.onrender.com/create_agent/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -253,4 +253,4 @@ function AgentBuilder() {
   );
 }
 
-export default AgentBuilder; 
+export default AgentBuilder;

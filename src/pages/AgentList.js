@@ -39,7 +39,7 @@ function AgentList() {
 
   const fetchAgents = async () => {
     try {
-      const response = await fetch('http://localhost:8000/get_all_agents/', {
+      const response = await fetch('https://doc-query-backend.onrender.com/get_all_agents/', {
         headers: {
           'accept': 'application/json',
         },
@@ -74,7 +74,7 @@ function AgentList() {
 
   const handleDeleteConfirm = async () => {
     try {
-      const response = await fetch(`http://localhost:8000/delete_agent/${agentToDelete.task_id}`, {
+      const response = await fetch(`https://doc-query-backend.onrender.com/delete_agent/${agentToDelete.task_id}`, {
         method: 'DELETE',
         headers: {
           'accept': 'application/json',
@@ -218,4 +218,4 @@ function AgentList() {
   );
 }
 
-export default AgentList; 
+export default AgentList;
