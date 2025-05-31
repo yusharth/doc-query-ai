@@ -23,6 +23,7 @@ import {
   Add as AddIcon,
   Delete as DeleteIcon,
 } from '@mui/icons-material';
+import API_URL from '../config/api';
 
 function AgentList() {
   const navigate = useNavigate();
@@ -39,7 +40,7 @@ function AgentList() {
 
   const fetchAgents = async () => {
     try {
-      const response = await fetch('http://localhost:8000/get_all_agents/', {
+      const response = await fetch(`${API_URL}/get_all_agents/`, {
         headers: {
           'accept': 'application/json',
         },
@@ -74,7 +75,7 @@ function AgentList() {
 
   const handleDeleteConfirm = async () => {
     try {
-      const response = await fetch(`http://localhost:8000/delete_agent/${agentToDelete.task_id}`, {
+      const response = await fetch(`${API_URL}/delete_agent/${agentToDelete.task_id}`, {
         method: 'DELETE',
         headers: {
           'accept': 'application/json',
@@ -82,7 +83,6 @@ function AgentList() {
       });
 
       if (response.ok) {
-        // Remove the deleted agent from the list
         setAgents(agents.filter(agent => agent.task_id !== agentToDelete.task_id));
         setDeleteDialogOpen(false);
         setAgentToDelete(null);
@@ -193,7 +193,7 @@ function AgentList() {
         <DialogTitle>Delete Agent</DialogTitle>
         <DialogContent>
           {deleteError ? (
-            <Alert severity="error" sx={{ mt: 2 }}>
+            <Alert severity="error\" sx={{ mt: 2 }}>
               {deleteError}
             </Alert>
           ) : (
@@ -218,4 +218,4 @@ function AgentList() {
   );
 }
 
-export default AgentList; 
+export default AgentList;

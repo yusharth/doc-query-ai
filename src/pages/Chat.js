@@ -13,6 +13,7 @@ import {
   CircularProgress,
 } from '@mui/material';
 import { Send as SendIcon } from '@mui/icons-material';
+import API_URL from '../config/api';
 
 function Chat() {
   const { taskId } = useParams();
@@ -39,7 +40,7 @@ function Chat() {
     setIsLoading(true);
 
     try {
-      const response = await fetch('http://localhost:8000/chat/', {
+      const response = await fetch(`${API_URL}/chat/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -157,4 +158,4 @@ function Chat() {
   );
 }
 
-export default Chat; 
+export default Chat;

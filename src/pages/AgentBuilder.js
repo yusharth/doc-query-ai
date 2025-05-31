@@ -17,6 +17,7 @@ import {
   Alert,
 } from '@mui/material';
 import { Add as AddIcon, Upload as UploadIcon } from '@mui/icons-material';
+import API_URL from '../config/api';
 
 function AgentBuilder() {
   const navigate = useNavigate();
@@ -58,7 +59,7 @@ function AgentBuilder() {
     formData.append('file', selectedFile);
 
     try {
-      const response = await fetch('http://localhost:8000/upload/', {
+      const response = await fetch(`${API_URL}/upload/`, {
         method: 'POST',
         body: formData,
       });
@@ -95,7 +96,7 @@ function AgentBuilder() {
     };
 
     try {
-      const response = await fetch('http://localhost:8000/create_agent/', {
+      const response = await fetch(`${API_URL}/create_agent/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -105,11 +106,9 @@ function AgentBuilder() {
 
       if (response.ok) {
         setUploadStatus({ type: 'success', message: 'Agent created successfully' });
-        // Navigate to chat page for RAG agents
         if (agentType === 'rag-agent' && taskId) {
           navigate(`/chat/${taskId}`);
         } else {
-          // Reset form for non-RAG agents
           setAgentName('');
           setAgentType('');
           setCapabilities([]);
@@ -253,4 +252,4 @@ function AgentBuilder() {
   );
 }
 
-export default AgentBuilder; 
+export default AgentBuilder;
