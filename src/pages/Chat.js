@@ -20,7 +20,9 @@ function Chat() {
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [currentStreamMessage, setCurrentStreamMessage] = useState('');
   const messagesEndRef = useRef(null);
+  const abortControllerRef = useRef(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -28,7 +30,16 @@ function Chat() {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, currentStreamMessage]);
+
+  useEffect(() => {
+    // Cleanup function to abort any ongoing requests when component unmounts
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
@@ -38,6 +49,15 @@ function Chat() {
     setInputMessage('');
     setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
     setIsLoading(true);
+    setCurrentStreamMessage('');
+
+    // Abort any existing request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    // Create new AbortController for this request
+    abortControllerRef.current = new AbortController();
 
     try {
       const response = await fetch(`${API_URL}/chat/`, {
@@ -50,24 +70,55 @@ function Chat() {
           task_id: taskId,
           user_message: userMessage,
         }),
+        signal: abortControllerRef.current.signal,
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        setMessages(prev => [...prev, { role: 'assistant', content: data.response }]);
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || ''; // Keep the last incomplete line in the buffer
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6); // Remove 'data: ' prefix
+            if (data === '[DONE]') {
+              // Handle completion
+              break;
+            }
+            setCurrentStreamMessage(prev => prev + data);
+          }
+        }
+      }
+
+      // Add the complete streamed message to messages
+      if (currentStreamMessage) {
+        setMessages(prev => [...prev, { role: 'assistant', content: currentStreamMessage }]);
+        setCurrentStreamMessage('');
+      }
+
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        console.log('Request was aborted');
       } else {
         setMessages(prev => [...prev, { 
           role: 'error', 
-          content: 'Sorry, there was an error processing your message.' 
+          content: 'Sorry, there was an error connecting to the server.' 
         }]);
       }
-    } catch (error) {
-      setMessages(prev => [...prev, { 
-        role: 'error', 
-        content: 'Sorry, there was an error connecting to the server.' 
-      }]);
     } finally {
       setIsLoading(false);
+      abortControllerRef.current = null;
     }
   };
 
@@ -118,7 +169,20 @@ function Chat() {
               {index < messages.length - 1 && <Divider />}
             </React.Fragment>
           ))}
-          {isLoading && (
+          {currentStreamMessage && (
+            <ListItem sx={{ justifyContent: 'flex-start' }}>
+              <Paper
+                sx={{
+                  p: 2,
+                  maxWidth: '70%',
+                  backgroundColor: 'grey.100',
+                }}
+              >
+                <ListItemText primary={currentStreamMessage} />
+              </Paper>
+            </ListItem>
+          )}
+          {isLoading && !currentStreamMessage && (
             <ListItem sx={{ justifyContent: 'flex-start' }}>
               <CircularProgress size={20} />
             </ListItem>
