@@ -10,6 +10,7 @@ import AgentBuilder from './pages/AgentBuilder';
 import AgentList from './pages/AgentList';
 import Settings from './pages/Settings';
 import Chat from './pages/Chat';
+import VoiceAgent from './pages/VoiceAgent';
 
 // Import components
 import Layout from './components/Layout';
@@ -41,6 +42,7 @@ function App() {
                 <Route path="/builder" element={<AgentBuilder />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/chat/:taskId" element={<Chat />} />
+                <Route path="/voice-agent" element={<VoiceAgent />} />
               </Routes>
             </Box>
           </Layout>

@@ -14,6 +14,7 @@ import {
 } from '@mui/material';
 import { Send as SendIcon } from '@mui/icons-material';
 import API_URL from '../config/api';
+import AudioStream from '../components/AudioStream';
 
 function Chat() {
   const { taskId } = useParams();
@@ -130,6 +131,10 @@ function Chat() {
       <Typography variant="subtitle1" color="text.secondary" gutterBottom>
         Task ID: {taskId}
       </Typography>
+
+      <Box sx={{ mb: 2 }}>
+        <AudioStream />
+      </Box>
 
       <Paper 
         sx={{ 
