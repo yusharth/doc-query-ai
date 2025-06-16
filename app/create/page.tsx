@@ -37,26 +37,6 @@ interface CreateAgentPageProps {
 }
 
 const agentTypes = [
-  // {
-  //   id: "chatbot",
-  //   value: "chatbot",
-  //   label: "Chatbot",
-  // },
-  // {
-  //   id: "data-analyzer",
-  //   value: "data-analyzer",
-  //   label: "Data Analyzer",
-  // },
-  // {
-  //   id: "task-automator",
-  //   value: "task-automator",
-  //   label: "Task Automator",
-  // },
-  // {
-  //   id: "content-generator",
-  //   value: "content-generator",
-  //   label: "Content Generator",
-  // },
   {
     id: "rag-agent",
     value: "rag-agent",
@@ -117,6 +97,7 @@ export default function CreateAgentPage({ onMenuClick }: CreateAgentPageProps) {
         ? {
             file_name: uploadedFile.name,
             doc_type: uploadedFile.type.split("/")[1].toUpperCase(),
+            instructions: instructions.trim() || null,
           }
         : null,
       created_at: new Date().toISOString(),
@@ -143,7 +124,6 @@ export default function CreateAgentPage({ onMenuClick }: CreateAgentPageProps) {
         setAgentType("");
         setInstructions("");
         setUploadedFile(null);
-        // setTaskId(null);
 
         return taskId;
       }
