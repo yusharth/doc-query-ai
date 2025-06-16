@@ -21,6 +21,7 @@ import {
   Build as BuildIcon,
   People as PeopleIcon,
   Settings as SettingsIcon,
+  Mic as MicIcon,
 } from '@mui/icons-material';
 
 const drawerWidth = 240;
@@ -30,6 +31,7 @@ const menuItems = [
   { text: 'Agents', icon: <PeopleIcon />, path: '/agents' },
   { text: 'Agent Builder', icon: <BuildIcon />, path: '/builder' },
   { text: 'Settings', icon: <SettingsIcon />, path: '/settings' },
+  { text: 'Voice AI', icon: <MicIcon />, path: '/realtime-voice' },
 ];
 
 function Layout({ children }) {
