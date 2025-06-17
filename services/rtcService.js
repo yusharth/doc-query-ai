@@ -40,17 +40,23 @@ export async function connect(audioElement) {
     console.log('Session data received:', { 
       hasClientSecret: !!data.client_secret, 
       resourceName: data.resource_name,
+      deploymentName: data.deployment_name,
       hasWebrtcUrl: !!data.webrtc_url
     });
     
     const EPHEMERAL_KEY = data.client_secret.value;
 
-    // Get the resource name from the token response
+    // Get the resource name and deployment from the token response
     const resourceName = data.resource_name;
+    const deploymentName = data.deployment_name;
     
-    // Validate resource name before attempting connection
+    // Validate resource name and deployment before attempting connection
     if (!resourceName || resourceName === 'YOUR_RESOURCE_NAME') {
       throw new Error('Azure OpenAI resource name is not properly configured. Please check your environment variables.');
+    }
+
+    if (!deploymentName) {
+      throw new Error('Azure OpenAI deployment name is not properly configured. Please check your AZURE_OPENAI_DEPLOYMENT environment variable.');
     }
 
     console.log('Initializing WebRTC connection...');
@@ -83,14 +89,11 @@ export async function connect(audioElement) {
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
 
-    // Use the WebRTC URL from environment variables if available, otherwise construct it
-    let realtimeUrl;
-    if (data.webrtc_url) {
-      realtimeUrl = data.webrtc_url;
-      console.log('Using configured WebRTC URL:', realtimeUrl);
-    } else {
-      realtimeUrl = `https://${resourceName}.realtimeapi-preview.ai.azure.com/v1/realtimertc?model=gpt-4o-mini-realtime-preview`;
-      console.log('Using constructed WebRTC URL:', realtimeUrl);
+    // Use the WebRTC URL from the session API response
+    const realtimeUrl = data.webrtc_url;
+    
+    if (!realtimeUrl) {
+      throw new Error('WebRTC URL not provided by session API');
     }
 
     console.log('Connecting to Azure OpenAI Realtime API:', realtimeUrl);

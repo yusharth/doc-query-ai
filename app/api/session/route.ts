@@ -7,12 +7,14 @@ export async function GET(request: NextRequest) {
     const apiKey = process.env.AZURE_OPENAI_API_KEY;
     const endpoint = process.env.AZURE_OPENAI_ENDPOINT;
     const resourceName = process.env.AZURE_OPENAI_RESOURCE_NAME;
+    const deployment = process.env.AZURE_OPENAI_DEPLOYMENT;
     const webrtcUrl = process.env.AZURE_OPENAI_WEBRTC_URL;
 
     console.log('Environment check:', {
       hasApiKey: !!apiKey,
       hasEndpoint: !!endpoint,
       hasResourceName: !!resourceName,
+      hasDeployment: !!deployment,
       hasWebrtcUrl: !!webrtcUrl,
       endpoint: endpoint ? endpoint.substring(0, 50) + '...' : 'undefined'
     });
@@ -33,6 +35,14 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    if (!deployment) {
+      console.error('AZURE_OPENAI_DEPLOYMENT is missing');
+      return NextResponse.json(
+        { error: 'Missing AZURE_OPENAI_DEPLOYMENT environment variable' },
+        { status: 500 }
+      );
+    }
+
     // Extract resource name from endpoint URL if not provided separately
     let finalResourceName = resourceName;
     if (!finalResourceName && endpoint) {
@@ -48,14 +58,26 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log('Session created successfully for resource:', finalResourceName);
+    // Construct WebRTC URL if not explicitly provided
+    let finalWebrtcUrl = webrtcUrl;
+    if (!finalWebrtcUrl) {
+      // Remove trailing slash from endpoint if present
+      const cleanEndpoint = endpoint.replace(/\/$/, '');
+      finalWebrtcUrl = `${cleanEndpoint}/openai/deployments/${deployment}/realtime`;
+      console.log('Constructed WebRTC URL:', finalWebrtcUrl);
+    } else {
+      console.log('Using provided WebRTC URL:', finalWebrtcUrl);
+    }
+
+    console.log('Session created successfully for resource:', finalResourceName, 'deployment:', deployment);
 
     return NextResponse.json({
       client_secret: {
         value: apiKey
       },
       resource_name: finalResourceName,
-      webrtc_url: webrtcUrl
+      deployment_name: deployment,
+      webrtc_url: finalWebrtcUrl
     });
   } catch (error) {
     console.error('Session creation error:', error);
