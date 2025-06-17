@@ -43,8 +43,11 @@ export async function connect(audioElement) {
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
 
+    // Get Azure OpenAI resource name from environment variable
+    const resourceName = process.env.NEXT_PUBLIC_AZURE_OPENAI_RESOURCE_NAME || 'YOUR_RESOURCE_NAME';
+    
     const sdpResponse = await fetch(
-      `https://swedencentral.realtimeapi-preview.ai.azure.com/v1/realtimertc?model=gpt-4o-mini-realtime-preview`,
+      `https://${resourceName}.realtimeapi-preview.ai.azure.com/v1/realtimertc?model=gpt-4o-mini-realtime-preview`,
       {
         method: 'POST',
         body: offer.sdp,

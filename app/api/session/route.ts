@@ -2,8 +2,9 @@ import { NextResponse } from 'next/server';
 
 export async function GET() {
   try {
-    // Use Azure OpenAI API key instead of OpenAI
+    // Use Azure OpenAI API key and resource name from environment variables
     const AZURE_OPENAI_API_KEY = process.env.AZURE_OPENAI_API_KEY;
+    const AZURE_OPENAI_RESOURCE_NAME = process.env.AZURE_OPENAI_RESOURCE_NAME;
     
     if (!AZURE_OPENAI_API_KEY) {
       return NextResponse.json(
@@ -12,8 +13,15 @@ export async function GET() {
       );
     }
 
+    if (!AZURE_OPENAI_RESOURCE_NAME) {
+      return NextResponse.json(
+        { error: 'Azure OpenAI resource name not configured' },
+        { status: 500 }
+      );
+    }
+
     const response = await fetch(
-      'https://yusharthsingh-2837-resource.cognitiveservices.azure.com/openai/realtimeapi/sessions?api-version=2025-04-01-preview',
+      `https://${AZURE_OPENAI_RESOURCE_NAME}.openai.azure.com/openai/realtimeapi/sessions?api-version=2025-04-01-preview`,
       {
         method: 'POST',
         headers: {
