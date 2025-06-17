@@ -1,43 +1,43 @@
-"use client"
+"use client";
 
-import { useState, useEffect, useRef } from "react"
-import { useParams, useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { MobileBreadcrumb } from "@/components/mobile-breadcrumb"
-import { VoiceVisualizer } from "@/components/voice-visualizer"
-import { VoiceMessage as VoiceMessageComponent } from "@/components/voice-message"
-import { Bot, Mic, MicOff, ArrowLeft, Volume2, VolumeX, Settings } from "lucide-react"
-import { VoiceSettings as VoiceSettingsComponent } from "@/components/voice-settings"
-import Link from "next/link"
+import type React from "react";
+import { useState, useEffect, useRef } from "react";
+import { useParams } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { MobileBreadcrumb } from "@/components/mobile-breadcrumb";
+import { VoiceVisualizer } from "@/components/voice-visualizer";
+import { VoiceMessage as VoiceMessageComponent } from "@/components/voice-message";
+import { Bot, Mic, MicOff, Volume2, VolumeX, Settings } from "lucide-react";
+import { VoiceSettings as VoiceSettingsComponent } from "@/components/voice-settings";
+import Link from "next/link";
 
 interface VoiceMessage {
-  id: string
-  content: string
-  sender: "user" | "agent"
-  timestamp: Date
-  isPlaying?: boolean
-  duration?: number
-  audioBlob?: Blob
+  id: string;
+  content: string;
+  sender: "user" | "agent";
+  timestamp: Date;
+  isPlaying?: boolean;
+  duration?: number;
+  audioBlob?: Blob;
 }
 
 interface VoicePageProps {
-  onMenuClick?: () => void
+  onMenuClick?: () => void;
 }
 
 interface VoiceSettings {
-  rate: number
-  pitch: number
-  volume: number
-  voice: string
+  rate: number;
+  pitch: number;
+  volume: number;
+  voice: string;
 }
 
 export default function VoicePage({ onMenuClick }: VoicePageProps) {
-  const params = useParams()
-  const router = useRouter()
-  const agentId = params.agentId as string
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+  const params = useParams();
+  const agentId = params.agentId as string;
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
   const [messages, setMessages] = useState<VoiceMessage[]>([
     {
@@ -47,253 +47,254 @@ export default function VoicePage({ onMenuClick }: VoicePageProps) {
       timestamp: new Date(),
       duration: 5,
     },
-  ])
-  const [isRecording, setIsRecording] = useState(false)
-  const [isProcessing, setIsProcessing] = useState(false)
-  const [isSpeaking, setIsSpeaking] = useState(false)
-  const [recordingTime, setRecordingTime] = useState(0)
-  const [isMuted, setIsMuted] = useState(false)
-  const [showSettings, setShowSettings] = useState(false)
+  ]);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const [isMuted, setIsMuted] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [voiceSettings, setVoiceSettings] = useState<VoiceSettings>({
     rate: 1,
     pitch: 1,
     volume: 0.8,
     voice: "",
-  })
-  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([])
+  });
+  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
 
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
-  const audioChunksRef = useRef<Blob[]>([])
-  const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null)
-  const messagesEndRef = useRef<HTMLDivElement>(null)
-  const currentUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null)
-  const isComponentMountedRef = useRef(true)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const currentUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const isComponentMountedRef = useRef(true);
 
   const breadcrumbItems = [
     { label: "Dashboard", href: "/" },
     { label: "Agents", href: "/agents" },
     { label: "Voice Chat", isCurrentPage: true },
-  ]
+  ];
 
   // Cleanup function to stop all voice activities
   const cleanupVoiceActivities = () => {
     // Stop speech synthesis
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
-      speechSynthesis.cancel()
+      speechSynthesis.cancel();
     }
 
     // Stop media recorder
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
-      mediaRecorderRef.current.stop()
+      mediaRecorderRef.current.stop();
     }
 
     // Clear recording interval
     if (recordingIntervalRef.current) {
-      clearInterval(recordingIntervalRef.current)
+      clearInterval(recordingIntervalRef.current);
     }
 
     // Reset states
-    setIsSpeaking(false)
-    setIsRecording(false)
-    setIsProcessing(false)
-    currentUtteranceRef.current = null
-  }
+    setIsSpeaking(false);
+    setIsRecording(false);
+    setIsProcessing(false);
+    currentUtteranceRef.current = null;
+  };
 
   // Cleanup on component unmount or route change
   useEffect(() => {
-    isComponentMountedRef.current = true
+    isComponentMountedRef.current = true;
 
     return () => {
-      isComponentMountedRef.current = false
-      cleanupVoiceActivities()
-    }
-  }, [])
+      isComponentMountedRef.current = false;
+      cleanupVoiceActivities();
+    };
+  }, []);
 
   // Handle route changes
   useEffect(() => {
     const handleRouteChange = () => {
-      cleanupVoiceActivities()
-    }
+      cleanupVoiceActivities();
+    };
 
     // Listen for route changes
-    window.addEventListener("beforeunload", handleRouteChange)
+    window.addEventListener("beforeunload", handleRouteChange);
 
     return () => {
-      window.removeEventListener("beforeunload", handleRouteChange)
-      cleanupVoiceActivities()
-    }
-  }, [])
+      window.removeEventListener("beforeunload", handleRouteChange);
+      cleanupVoiceActivities();
+    };
+  }, []);
 
   // Initialize speech synthesis
   useEffect(() => {
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       const loadVoices = () => {
-        const voices = speechSynthesis.getVoices()
-        setAvailableVoices(voices)
+        const voices = speechSynthesis.getVoices();
+        setAvailableVoices(voices);
 
         // Set default voice (prefer English voices)
         const defaultVoice =
           voices.find((voice) => voice.lang.startsWith("en") && voice.name.includes("Google")) ||
           voices.find((voice) => voice.lang.startsWith("en")) ||
-          voices[0]
+          voices[0];
 
         if (defaultVoice && !voiceSettings.voice) {
-          setVoiceSettings((prev) => ({ ...prev, voice: defaultVoice.name }))
+          setVoiceSettings((prev) => ({ ...prev, voice: defaultVoice.name }));
         }
-      }
+      };
 
-      loadVoices()
-      speechSynthesis.onvoiceschanged = loadVoices
+      loadVoices();
+      speechSynthesis.onvoiceschanged = loadVoices;
     }
-  }, [voiceSettings.voice])
+  }, [voiceSettings.voice]);
 
   // Speak the initial message
   useEffect(() => {
     if (messages.length === 1 && messages[0].sender === "agent" && isComponentMountedRef.current) {
       setTimeout(() => {
         if (isComponentMountedRef.current) {
-          speakText(messages[0].content)
+          speakText(messages[0].content);
         }
-      }, 1000)
+      }, 1000);
     }
-  }, [])
+  }, []);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
 
   useEffect(() => {
-    scrollToBottom()
-  }, [messages])
+    scrollToBottom();
+  }, [messages]);
 
   useEffect(() => {
     if (isRecording) {
       recordingIntervalRef.current = setInterval(() => {
-        setRecordingTime((prev) => prev + 1)
-      }, 1000)
+        setRecordingTime((prev) => prev + 1);
+      }, 1000);
     } else {
       if (recordingIntervalRef.current) {
-        clearInterval(recordingIntervalRef.current)
+        clearInterval(recordingIntervalRef.current);
       }
-      setRecordingTime(0)
+      setRecordingTime(0);
     }
 
     return () => {
       if (recordingIntervalRef.current) {
-        clearInterval(recordingIntervalRef.current)
+        clearInterval(recordingIntervalRef.current);
       }
-    }
-  }, [isRecording])
+    };
+  }, [isRecording]);
 
   const speakText = (text: string) => {
-    if (isMuted || !("speechSynthesis" in window) || !isComponentMountedRef.current) return
+    if (isMuted || !("speechSynthesis" in window) || !isComponentMountedRef.current) return;
 
     // Stop any current speech
-    speechSynthesis.cancel()
+    speechSynthesis.cancel();
 
-    const utterance = new SpeechSynthesisUtterance(text)
-    const selectedVoice = availableVoices.find((voice) => voice.name === voiceSettings.voice)
+    const utterance = new SpeechSynthesisUtterance(text);
+    const selectedVoice = availableVoices.find((voice) => voice.name === voiceSettings.voice);
 
     if (selectedVoice) {
-      utterance.voice = selectedVoice
+      utterance.voice = selectedVoice;
     }
 
-    utterance.rate = voiceSettings.rate
-    utterance.pitch = voiceSettings.pitch
-    utterance.volume = voiceSettings.volume
+    utterance.rate = voiceSettings.rate;
+    utterance.pitch = voiceSettings.pitch;
+    utterance.volume = voiceSettings.volume;
 
     utterance.onstart = () => {
       if (isComponentMountedRef.current) {
-        setIsSpeaking(true)
-        currentUtteranceRef.current = utterance
+        setIsSpeaking(true);
+        currentUtteranceRef.current = utterance;
       }
-    }
+    };
 
     utterance.onend = () => {
       if (isComponentMountedRef.current) {
-        setIsSpeaking(false)
-        currentUtteranceRef.current = null
+        setIsSpeaking(false);
+        currentUtteranceRef.current = null;
       }
-    }
+    };
 
     utterance.onerror = () => {
       if (isComponentMountedRef.current) {
-        setIsSpeaking(false)
-        currentUtteranceRef.current = null
+        setIsSpeaking(false);
+        currentUtteranceRef.current = null;
       }
-    }
+    };
 
-    speechSynthesis.speak(utterance)
-  }
+    speechSynthesis.speak(utterance);
+  };
 
   const stopSpeaking = () => {
-    speechSynthesis.cancel()
-    setIsSpeaking(false)
-    currentUtteranceRef.current = null
-  }
+    speechSynthesis.cancel();
+    setIsSpeaking(false);
+    currentUtteranceRef.current = null;
+  };
 
   const startRecording = async () => {
     try {
       // Stop any current speech when user starts recording
-      stopSpeaking()
+      stopSpeaking();
 
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      const mediaRecorder = new MediaRecorder(stream)
-      mediaRecorderRef.current = mediaRecorder
-      audioChunksRef.current = []
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
 
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data)
+          audioChunksRef.current.push(event.data);
         }
-      }
+      };
 
       mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/wav" })
-        await processAudioMessage(audioBlob)
+        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/wav" });
+        await processAudioMessage(audioBlob);
         
         // Stop all tracks to release microphone
-        stream.getTracks().forEach(track => track.stop())
-      }
+        stream.getTracks().forEach(track => track.stop());
+      };
 
-      mediaRecorder.start()
-      setIsRecording(true)
-      setRecordingTime(0)
+      mediaRecorder.start();
+      setIsRecording(true);
+      setRecordingTime(0);
     } catch (error) {
-      console.error("Error starting recording:", error)
-      alert("Could not access microphone. Please check permissions.")
+      console.error("Error starting recording:", error);
+      alert("Could not access microphone. Please check permissions and ensure you're using HTTPS.");
     }
-  }
+  };
 
   const stopRecording = () => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
-      mediaRecorderRef.current.stop()
-      setIsRecording(false)
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
     }
-  }
+  };
 
   const processAudioMessage = async (audioBlob: Blob) => {
-    setIsProcessing(true)
+    setIsProcessing(true);
 
     try {
       // Convert audio to text using speech-to-text API
-      const formData = new FormData()
-      formData.append("audio", audioBlob, "recording.wav")
+      const formData = new FormData();
+      formData.append("audio", audioBlob, "recording.wav");
 
       const transcriptionResponse = await fetch(`${API_URL}/speech-to-text/`, {
         method: "POST",
         body: formData,
-      })
+      });
 
       if (!transcriptionResponse.ok) {
-        throw new Error("Speech-to-text failed")
+        const errorData = await transcriptionResponse.json();
+        throw new Error(errorData.detail || "Speech-to-text failed");
       }
 
-      const transcriptionData = await transcriptionResponse.json()
-      const transcribedText = transcriptionData.text
+      const transcriptionData = await transcriptionResponse.json();
+      const transcribedText = transcriptionData.text;
 
       if (!transcribedText || transcribedText.trim() === "") {
-        throw new Error("No speech detected")
+        throw new Error("No speech detected. Please try speaking more clearly.");
       }
 
       // Add user message
@@ -304,10 +305,10 @@ export default function VoicePage({ onMenuClick }: VoicePageProps) {
         timestamp: new Date(),
         duration: recordingTime,
         audioBlob: audioBlob,
-      }
+      };
 
-      setMessages((prev) => [...prev, userMessage])
-      setIsProcessing(false)
+      setMessages((prev) => [...prev, userMessage]);
+      setIsProcessing(false);
 
       // Get AI response
       const chatResponse = await fetch(`${API_URL}/voice-chat/`, {
@@ -320,21 +321,22 @@ export default function VoicePage({ onMenuClick }: VoicePageProps) {
           user_message: transcribedText,
           voice_settings: voiceSettings,
         }),
-      })
+      });
 
       if (!chatResponse.ok) {
-        throw new Error("Failed to get AI response")
+        const errorData = await chatResponse.json();
+        throw new Error(errorData.detail || "Failed to get AI response");
       }
 
-      const reader = chatResponse.body?.getReader()
+      const reader = chatResponse.body?.getReader();
       if (!reader) {
-        throw new Error("No reader available")
+        throw new Error("No reader available");
       }
 
-      const decoder = new TextDecoder()
-      let buffer = ""
-      const agentMessageId = (Date.now() + 1).toString()
-      let fullResponse = ""
+      const decoder = new TextDecoder();
+      let buffer = "";
+      const agentMessageId = (Date.now() + 1).toString();
+      let fullResponse = "";
 
       // Create initial streaming message
       setMessages((prev) => [
@@ -346,24 +348,24 @@ export default function VoicePage({ onMenuClick }: VoicePageProps) {
           timestamp: new Date(),
           duration: 0,
         },
-      ])
+      ]);
 
       while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
+        const { done, value } = await reader.read();
+        if (done) break;
 
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split("\n")
-        buffer = lines.pop() || ""
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
 
         for (const line of lines) {
           if (line.startsWith("data: ")) {
-            const data = line.slice(6)
+            const data = line.slice(6);
             if (data === "[DONE]") {
-              break
+              break;
             }
 
-            fullResponse += data
+            fullResponse += data;
             // Update the streaming message
             setMessages((prev) =>
               prev.map((msg) =>
@@ -371,49 +373,61 @@ export default function VoicePage({ onMenuClick }: VoicePageProps) {
                   ? { ...msg, content: fullResponse }
                   : msg
               )
-            )
+            );
           }
         }
       }
+
+      // Update final message with duration estimate
+      const estimatedDuration = Math.ceil(fullResponse.length / 15);
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === agentMessageId
+            ? { ...msg, duration: estimatedDuration }
+            : msg
+        )
+      );
 
       // Speak the agent response
       if (fullResponse && !isMuted) {
         setTimeout(() => {
           if (isComponentMountedRef.current) {
-            speakText(fullResponse)
+            speakText(fullResponse);
           }
-        }, 500)
+        }, 500);
       }
 
     } catch (error) {
-      console.error("Error processing audio:", error)
+      console.error("Error processing audio:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+      
       setMessages((prev) => [
         ...prev,
         {
           id: Date.now().toString(),
-          content: "Sorry, I couldn't process your voice message. Please try again.",
+          content: `Sorry, I encountered an error: ${errorMessage}. Please try again.`,
           sender: "agent",
           timestamp: new Date(),
           duration: 3,
         },
-      ])
+      ]);
     } finally {
-      setIsProcessing(false)
+      setIsProcessing(false);
     }
-  }
+  };
 
   const formatTime = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins}:${secs.toString().padStart(2, "0")}`
-  }
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
 
   const handleMuteToggle = () => {
-    setIsMuted(!isMuted)
+    setIsMuted(!isMuted);
     if (!isMuted) {
-      stopSpeaking()
+      stopSpeaking();
     }
-  }
+  };
 
   if (!agentId) {
     return (
@@ -425,7 +439,7 @@ export default function VoicePage({ onMenuClick }: VoicePageProps) {
           </Button>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -437,7 +451,9 @@ export default function VoicePage({ onMenuClick }: VoicePageProps) {
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="sm" className="md:hidden" asChild>
             <Link href="/agents" onClick={cleanupVoiceActivities}>
-              <ArrowLeft className="h-4 w-4" />
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
             </Link>
           </Button>
           <Avatar className="h-10 w-10">
@@ -553,5 +569,5 @@ export default function VoicePage({ onMenuClick }: VoicePageProps) {
         </div>
       </div>
     </div>
-  )
+  );
 }
