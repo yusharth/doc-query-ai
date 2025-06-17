@@ -7,11 +7,13 @@ export async function GET(request: NextRequest) {
     const apiKey = process.env.AZURE_OPENAI_API_KEY;
     const endpoint = process.env.AZURE_OPENAI_ENDPOINT;
     const resourceName = process.env.AZURE_OPENAI_RESOURCE_NAME;
+    const webrtcUrl = process.env.AZURE_OPENAI_WEBRTC_URL;
 
     console.log('Environment check:', {
       hasApiKey: !!apiKey,
       hasEndpoint: !!endpoint,
       hasResourceName: !!resourceName,
+      hasWebrtcUrl: !!webrtcUrl,
       endpoint: endpoint ? endpoint.substring(0, 50) + '...' : 'undefined'
     });
 
@@ -52,7 +54,8 @@ export async function GET(request: NextRequest) {
       client_secret: {
         value: apiKey
       },
-      resource_name: finalResourceName
+      resource_name: finalResourceName,
+      webrtc_url: webrtcUrl
     });
   } catch (error) {
     console.error('Session creation error:', error);

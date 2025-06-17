@@ -37,7 +37,11 @@ export async function connect(audioElement) {
     }
     
     const data = await tokenResponse.json();
-    console.log('Session data received:', { hasClientSecret: !!data.client_secret, resourceName: data.resource_name });
+    console.log('Session data received:', { 
+      hasClientSecret: !!data.client_secret, 
+      resourceName: data.resource_name,
+      hasWebrtcUrl: !!data.webrtc_url
+    });
     
     const EPHEMERAL_KEY = data.client_secret.value;
 
@@ -79,7 +83,16 @@ export async function connect(audioElement) {
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
 
-    const realtimeUrl = `https://${resourceName}.realtimeapi-preview.ai.azure.com/v1/realtimertc?model=gpt-4o-mini-realtime-preview`;
+    // Use the WebRTC URL from environment variables if available, otherwise construct it
+    let realtimeUrl;
+    if (data.webrtc_url) {
+      realtimeUrl = data.webrtc_url;
+      console.log('Using configured WebRTC URL:', realtimeUrl);
+    } else {
+      realtimeUrl = `https://${resourceName}.realtimeapi-preview.ai.azure.com/v1/realtimertc?model=gpt-4o-mini-realtime-preview`;
+      console.log('Using constructed WebRTC URL:', realtimeUrl);
+    }
+
     console.log('Connecting to Azure OpenAI Realtime API:', realtimeUrl);
 
     const sdpResponse = await fetch(realtimeUrl, {
