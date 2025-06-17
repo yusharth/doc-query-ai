@@ -24,6 +24,14 @@ export async function connect(audioElement) {
     const data = await tokenResponse.json();
     const EPHEMERAL_KEY = data.client_secret.value;
 
+    // Get the resource name from the token response or environment
+    const resourceName = data.resource_name || process.env.NEXT_PUBLIC_AZURE_OPENAI_RESOURCE_NAME;
+    
+    // Validate resource name before attempting connection
+    if (!resourceName || resourceName === 'YOUR_RESOURCE_NAME') {
+      throw new Error('Azure OpenAI resource name is not properly configured. Please check your environment variables.');
+    }
+
     pc = new RTCPeerConnection();
     audioEl = audioElement; // ✅ Set from passed-in reference
 
@@ -43,9 +51,6 @@ export async function connect(audioElement) {
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
 
-    // Get Azure OpenAI resource name from environment variable
-    const resourceName = process.env.NEXT_PUBLIC_AZURE_OPENAI_RESOURCE_NAME || 'YOUR_RESOURCE_NAME';
-    
     const sdpResponse = await fetch(
       `https://${resourceName}.realtimeapi-preview.ai.azure.com/v1/realtimertc?model=gpt-4o-mini-realtime-preview`,
       {
@@ -58,7 +63,11 @@ export async function connect(audioElement) {
       }
     );
 
-    if (!sdpResponse.ok) throw new Error('Failed to connect to OpenAI');
+    if (!sdpResponse.ok) {
+      const errorText = await sdpResponse.text();
+      throw new Error(`Failed to connect to Azure OpenAI: ${sdpResponse.status} ${sdpResponse.statusText} - ${errorText}`);
+    }
+    
     const answer = {
       type: 'answer',
       sdp: await sdpResponse.text(),

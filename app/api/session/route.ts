@@ -1,62 +1,52 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    // Use Azure OpenAI API key and resource name from environment variables
-    const AZURE_OPENAI_API_KEY = process.env.AZURE_OPENAI_API_KEY;
-    const AZURE_OPENAI_RESOURCE_NAME = process.env.AZURE_OPENAI_RESOURCE_NAME;
-    
-    if (!AZURE_OPENAI_API_KEY) {
+    const apiKey = process.env.AZURE_OPENAI_API_KEY;
+    const endpoint = process.env.AZURE_OPENAI_ENDPOINT;
+    const resourceName = process.env.AZURE_OPENAI_RESOURCE_NAME;
+
+    if (!apiKey || !endpoint || !resourceName) {
       return NextResponse.json(
-        { error: 'Azure OpenAI API key not configured' },
+        { error: 'Missing Azure OpenAI configuration' },
         { status: 500 }
       );
     }
 
-    if (!AZURE_OPENAI_RESOURCE_NAME) {
-      return NextResponse.json(
-        { error: 'Azure OpenAI resource name not configured' },
-        { status: 500 }
-      );
-    }
-
-    const response = await fetch(
-      `https://${AZURE_OPENAI_RESOURCE_NAME}.openai.azure.com/openai/realtimeapi/sessions?api-version=2025-04-01-preview`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${AZURE_OPENAI_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o-mini-realtime-preview',
-          voice: 'coral',
-          modalities: ['audio', 'text'],
-          turn_detection: null,
-          temperature: 0.7,
-          input_audio_transcription: {
-            model: 'whisper-1',
-            language: 'en'
-          }
-        }),
-      }
-    );
+    // Create a session token for the client
+    const response = await fetch(`${endpoint}/openai/realtime?api-version=2024-10-01-preview`, {
+      method: 'POST',
+      headers: {
+        'api-key': apiKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini-realtime-preview',
+        voice: process.env.AZURE_OPENAI_VOICE || 'verse',
+      }),
+    });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      console.error('Azure OpenAI API error:', errorData);
+      const errorText = await response.text();
+      console.error('Failed to create session:', errorText);
       return NextResponse.json(
-        { error: `Azure OpenAI API error: ${response.status}` },
+        { error: 'Failed to create session' },
         { status: response.status }
       );
     }
 
     const data = await response.json();
-    return NextResponse.json(data);
+    
+    return NextResponse.json({
+      client_secret: {
+        value: data.client_secret?.value || apiKey
+      },
+      resource_name: resourceName
+    });
   } catch (error) {
     console.error('Session creation error:', error);
     return NextResponse.json(
-      { error: `Failed to create session: ${error}` },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }
