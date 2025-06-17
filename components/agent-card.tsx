@@ -5,6 +5,7 @@ import {
   MessageSquare,
   MoreHorizontal,
   Mic,
+  Radio,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -88,6 +89,12 @@ export function AgentCard({ agent }: AgentCardProps) {
               <Link href={`/voice/${agent.task_id}`}>
                 <Mic className="mr-2 h-4 w-4" />
                 Voice
+              </Link>
+            </Button>
+            <Button size="sm" variant="outline" asChild>
+              <Link href={`/rtc-voice/${agent.task_id}`}>
+                <Radio className="mr-2 h-4 w-4" />
+                RTC
               </Link>
             </Button>
             <Button size="sm" asChild>
