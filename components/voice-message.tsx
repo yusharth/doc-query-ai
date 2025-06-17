@@ -28,23 +28,34 @@ export function VoiceMessage({ message, isMuted, onSpeak }: VoiceMessageProps) {
   const isUser = message.sender === "user"
 
   const togglePlayback = () => {
-    if (isMuted || !onSpeak) return
+    if (isMuted) return
 
-    if (!isPlaying) {
-      setIsPlaying(true)
-      onSpeak(message.content)
-
-      // Simulate playback duration
-      if (message.duration) {
-        setTimeout(() => {
-          setIsPlaying(false)
-        }, message.duration * 1000)
+    if (message.audioBlob && isUser) {
+      // Play recorded audio for user messages
+      if (!isPlaying) {
+        const audio = new Audio(URL.createObjectURL(message.audioBlob))
+        setIsPlaying(true)
+        audio.play()
+        audio.onended = () => setIsPlaying(false)
       }
-    } else {
-      setIsPlaying(false)
-      // Stop speech synthesis
-      if (typeof window !== "undefined" && "speechSynthesis" in window) {
-        speechSynthesis.cancel()
+    } else if (onSpeak && !isUser) {
+      // Use text-to-speech for agent messages
+      if (!isPlaying) {
+        setIsPlaying(true)
+        onSpeak(message.content)
+
+        // Simulate playback duration
+        if (message.duration) {
+          setTimeout(() => {
+            setIsPlaying(false)
+          }, message.duration * 1000)
+        }
+      } else {
+        setIsPlaying(false)
+        // Stop speech synthesis
+        if (typeof window !== "undefined" && "speechSynthesis" in window) {
+          speechSynthesis.cancel()
+        }
       }
     }
   }

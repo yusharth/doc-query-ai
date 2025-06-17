@@ -33,26 +33,16 @@ interface VoiceSettings {
   voice: string
 }
 
-// Sample agent data
-const agentData = {
-  "1": { name: "Customer Support Agent", type: "RAG Voice Chat" },
-  "2": { name: "Product FAQ Bot", type: "RAG Voice Chat" },
-  "3": { name: "HR Policy Assistant", type: "RAG Voice Chat" },
-  "4": { name: "Technical Support", type: "RAG Voice Chat" },
-  "5": { name: "Sales Assistant", type: "RAG Voice Chat" },
-  "6": { name: "Onboarding Guide", type: "RAG Voice Chat" },
-}
-
 export default function VoicePage({ onMenuClick }: VoicePageProps) {
   const params = useParams()
   const router = useRouter()
   const agentId = params.agentId as string
-  const agent = agentData[agentId as keyof typeof agentData]
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
 
   const [messages, setMessages] = useState<VoiceMessage[]>([
     {
       id: "1",
-      content: `Hello! I'm ${agent?.name || "your AI assistant"}. You can speak to me by pressing and holding the microphone button. How can I help you today?`,
+      content: "Hello! I'm your AI voice assistant. You can speak to me by pressing and holding the microphone button. How can I help you today?",
       sender: "agent",
       timestamp: new Date(),
       duration: 5,
@@ -72,6 +62,8 @@ export default function VoicePage({ onMenuClick }: VoicePageProps) {
   })
   const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([])
 
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const audioChunksRef = useRef<Blob[]>([])
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const currentUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null)
@@ -80,7 +72,7 @@ export default function VoicePage({ onMenuClick }: VoicePageProps) {
   const breadcrumbItems = [
     { label: "Dashboard", href: "/" },
     { label: "Agents", href: "/agents" },
-    { label: `${agent?.name || "Voice"} - Voice`, isCurrentPage: true },
+    { label: "Voice Chat", isCurrentPage: true },
   ]
 
   // Cleanup function to stop all voice activities
@@ -88,6 +80,11 @@ export default function VoicePage({ onMenuClick }: VoicePageProps) {
     // Stop speech synthesis
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       speechSynthesis.cancel()
+    }
+
+    // Stop media recorder
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+      mediaRecorderRef.current.stop()
     }
 
     // Clear recording interval
@@ -235,70 +232,174 @@ export default function VoicePage({ onMenuClick }: VoicePageProps) {
     currentUtteranceRef.current = null
   }
 
-  const startRecording = () => {
-    setIsRecording(true)
-    setRecordingTime(0)
-    // Stop any current speech when user starts recording
-    stopSpeaking()
+  const startRecording = async () => {
+    try {
+      // Stop any current speech when user starts recording
+      stopSpeaking()
+
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const mediaRecorder = new MediaRecorder(stream)
+      mediaRecorderRef.current = mediaRecorder
+      audioChunksRef.current = []
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data)
+        }
+      }
+
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/wav" })
+        await processAudioMessage(audioBlob)
+        
+        // Stop all tracks to release microphone
+        stream.getTracks().forEach(track => track.stop())
+      }
+
+      mediaRecorder.start()
+      setIsRecording(true)
+      setRecordingTime(0)
+    } catch (error) {
+      console.error("Error starting recording:", error)
+      alert("Could not access microphone. Please check permissions.")
+    }
   }
 
   const stopRecording = () => {
-    if (!isRecording) return
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+      mediaRecorderRef.current.stop()
+      setIsRecording(false)
+    }
+  }
 
-    setIsRecording(false)
+  const processAudioMessage = async (audioBlob: Blob) => {
     setIsProcessing(true)
 
-    // Simulate speech-to-text processing
-    setTimeout(() => {
-      if (!isComponentMountedRef.current) return
+    try {
+      // Convert audio to text using speech-to-text API
+      const formData = new FormData()
+      formData.append("audio", audioBlob, "recording.wav")
 
+      const transcriptionResponse = await fetch(`${API_URL}/speech-to-text/`, {
+        method: "POST",
+        body: formData,
+      })
+
+      if (!transcriptionResponse.ok) {
+        throw new Error("Speech-to-text failed")
+      }
+
+      const transcriptionData = await transcriptionResponse.json()
+      const transcribedText = transcriptionData.text
+
+      if (!transcribedText || transcribedText.trim() === "") {
+        throw new Error("No speech detected")
+      }
+
+      // Add user message
       const userMessage: VoiceMessage = {
         id: Date.now().toString(),
-        content:
-          "This is a simulated transcription of your voice message. In a real implementation, this would be the actual speech-to-text result from your recording.",
+        content: transcribedText,
         sender: "user",
         timestamp: new Date(),
         duration: recordingTime,
+        audioBlob: audioBlob,
       }
 
       setMessages((prev) => [...prev, userMessage])
       setIsProcessing(false)
 
-      // Simulate agent response
-      setTimeout(() => {
-        if (!isComponentMountedRef.current) return
+      // Get AI response
+      const chatResponse = await fetch(`${API_URL}/voice-chat/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          task_id: agentId,
+          user_message: transcribedText,
+          voice_settings: voiceSettings,
+        }),
+      })
 
-        const agentResponse = generateAgentResponse(userMessage.content)
-        const agentMessage: VoiceMessage = {
-          id: (Date.now() + 1).toString(),
-          content: agentResponse,
+      if (!chatResponse.ok) {
+        throw new Error("Failed to get AI response")
+      }
+
+      const reader = chatResponse.body?.getReader()
+      if (!reader) {
+        throw new Error("No reader available")
+      }
+
+      const decoder = new TextDecoder()
+      let buffer = ""
+      const agentMessageId = (Date.now() + 1).toString()
+      let fullResponse = ""
+
+      // Create initial streaming message
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: agentMessageId,
+          content: "",
           sender: "agent",
           timestamp: new Date(),
-          duration: Math.ceil(agentResponse.length / 15),
+          duration: 0,
+        },
+      ])
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split("\n")
+        buffer = lines.pop() || ""
+
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            const data = line.slice(6)
+            if (data === "[DONE]") {
+              break
+            }
+
+            fullResponse += data
+            // Update the streaming message
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === agentMessageId
+                  ? { ...msg, content: fullResponse }
+                  : msg
+              )
+            )
+          }
         }
+      }
 
-        setMessages((prev) => [...prev, agentMessage])
-
-        // Speak the agent response
+      // Speak the agent response
+      if (fullResponse && !isMuted) {
         setTimeout(() => {
           if (isComponentMountedRef.current) {
-            speakText(agentResponse)
+            speakText(fullResponse)
           }
         }, 500)
-      }, 1000)
-    }, 2000)
-  }
+      }
 
-  const generateAgentResponse = (userInput: string): string => {
-    const responses = [
-      "I understand your question. Based on the documents I have access to, here's what I can tell you about that topic. This information should help you understand the key concepts and procedures.",
-      "That's a great question! Let me provide you with the information you're looking for from our knowledge base. I'll make sure to give you accurate and helpful details.",
-      "I can help you with that. According to the documentation, here are the key points you should know. This should address your specific concern effectively.",
-      "Thank you for asking. I've found relevant information that should address your concern. Let me explain this in a clear and comprehensive way.",
-      "I see what you're looking for. Let me give you a comprehensive answer based on the available resources. This should provide you with the guidance you need.",
-    ]
-
-    return responses[Math.floor(Math.random() * responses.length)]
+    } catch (error) {
+      console.error("Error processing audio:", error)
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          content: "Sorry, I couldn't process your voice message. Please try again.",
+          sender: "agent",
+          timestamp: new Date(),
+          duration: 3,
+        },
+      ])
+    } finally {
+      setIsProcessing(false)
+    }
   }
 
   const formatTime = (seconds: number): string => {
@@ -314,7 +415,7 @@ export default function VoicePage({ onMenuClick }: VoicePageProps) {
     }
   }
 
-  if (!agent) {
+  if (!agentId) {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="text-center">
@@ -345,8 +446,8 @@ export default function VoicePage({ onMenuClick }: VoicePageProps) {
             </AvatarFallback>
           </Avatar>
           <div>
-            <h1 className="font-semibold">{agent.name}</h1>
-            <p className="text-sm text-muted-foreground">{agent.type}</p>
+            <h1 className="font-semibold">Voice Assistant</h1>
+            <p className="text-sm text-muted-foreground">RAG Voice Chat</p>
           </div>
           <div className="ml-auto flex items-center gap-2">
             <Button variant="ghost" size="sm" onClick={() => setShowSettings(!showSettings)} className="h-8 w-8 p-0">
