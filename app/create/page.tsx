@@ -73,20 +73,34 @@ export default function CreateAgentPage({ onMenuClick }: CreateAgentPageProps) {
         }
       );
 
-      if (response.ok) {
-        const data = await response.json();
-        console.log(data);
-        return data.task_id;
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`File upload failed (${response.status}): ${errorText}`);
       }
+
+      const data = await response.json();
+      console.log(data);
+      return data.task_id;
     } catch (error) {
-      throw new Error("Error uploading file");
+      console.error("File upload error:", error);
+      if (error instanceof Error) {
+        throw new Error(`Error uploading file: ${error.message}`);
+      }
+      throw new Error("Error uploading file: Unknown error occurred");
     }
   };
 
   const createAgent = async () => {
-    const taskId = await handleFileUpload();
+    let taskId;
+    
+    try {
+      taskId = await handleFileUpload();
+    } catch (error) {
+      throw error; // Re-throw the file upload error with its specific message
+    }
+
     if (!taskId) {
-      throw new Error("Error creating agent");
+      throw new Error("File upload succeeded but no task ID was returned");
     }
 
     const agentData = {
@@ -115,20 +129,30 @@ export default function CreateAgentPage({ onMenuClick }: CreateAgentPageProps) {
         }
       );
 
-      if (response.ok) {
-        toast({
-          title: "Agent Created Successfully!",
-          description: `${agentName} has been created and is ready to use.`,
-        });
-        setAgentName("");
-        setAgentType("");
-        setInstructions("");
-        setUploadedFile(null);
-
-        return taskId;
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Agent creation failed (${response.status}): ${errorText}`);
       }
+
+      const responseData = await response.json();
+      
+      toast({
+        title: "Agent Created Successfully!",
+        description: `${agentName} has been created and is ready to use.`,
+      });
+      
+      setAgentName("");
+      setAgentType("");
+      setInstructions("");
+      setUploadedFile(null);
+
+      return taskId;
     } catch (error) {
-      throw new Error("Error creating agent");
+      console.error("Agent creation error:", error);
+      if (error instanceof Error) {
+        throw new Error(`Error creating agent: ${error.message}`);
+      }
+      throw new Error("Error creating agent: Unknown error occurred");
     }
   };
 
@@ -167,19 +191,20 @@ export default function CreateAgentPage({ onMenuClick }: CreateAgentPageProps) {
     setIsSubmitting(true);
 
     try {
-      // Simulate API call
       const taskId = await createAgent();
-
-      // Show success toast
-
       // Navigate to agents page
       router.push(`/chat/${taskId}`);
-      // router.push("/agents");
     } catch (error) {
       console.error("Failed to create agent:", error);
+      
+      let errorMessage = "Failed to create the agent. Please try again.";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      
       toast({
         title: "Creation Failed",
-        description: "Failed to create the agent. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
