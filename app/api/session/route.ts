@@ -2,33 +2,43 @@ import { NextResponse } from 'next/server';
 
 export async function GET() {
   try {
-    // You'll need to set your OpenAI API key in environment variables
-    const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+    // Use Azure OpenAI API key instead of OpenAI
+    const AZURE_OPENAI_API_KEY = process.env.AZURE_OPENAI_API_KEY;
     
-    if (!OPENAI_API_KEY) {
+    if (!AZURE_OPENAI_API_KEY) {
       return NextResponse.json(
-        { error: 'OpenAI API key not configured' },
+        { error: 'Azure OpenAI API key not configured' },
         { status: 500 }
       );
     }
 
-    const response = await fetch('https://api.openai.com/v1/realtime/sessions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini-realtime-preview',
-        voice: 'alloy',
-      }),
-    });
+    const response = await fetch(
+      'https://yusharthsingh-2837-resource.cognitiveservices.azure.com/openai/realtimeapi/sessions?api-version=2025-04-01-preview',
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${AZURE_OPENAI_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini-realtime-preview',
+          voice: 'coral',
+          modalities: ['audio', 'text'],
+          turn_detection: null,
+          temperature: 0.7,
+          input_audio_transcription: {
+            model: 'whisper-1',
+            language: 'en'
+          }
+        }),
+      }
+    );
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('OpenAI API error:', errorText);
+      const errorData = await response.json();
+      console.error('Azure OpenAI API error:', errorData);
       return NextResponse.json(
-        { error: 'Failed to create session' },
+        { error: `Azure OpenAI API error: ${response.status}` },
         { status: response.status }
       );
     }
@@ -38,7 +48,7 @@ export async function GET() {
   } catch (error) {
     console.error('Session creation error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: `Failed to create session: ${error}` },
       { status: 500 }
     );
   }
