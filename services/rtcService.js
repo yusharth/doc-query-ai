@@ -19,60 +19,92 @@ export function onAssistantMessage(cb) {
 
 export async function connect(audioElement) {
   try {
-    const tokenResponse = await fetch('/api/session');
-    if (!tokenResponse.ok) throw new Error('Failed to get session token');
+    console.log('Attempting to connect to session API...');
+    
+    const tokenResponse = await fetch('/api/session', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    console.log('Session API response status:', tokenResponse.status);
+    
+    if (!tokenResponse.ok) {
+      const errorText = await tokenResponse.text();
+      console.error('Session API error response:', errorText);
+      throw new Error(`Failed to get session token: ${tokenResponse.status} ${tokenResponse.statusText} - ${errorText}`);
+    }
+    
     const data = await tokenResponse.json();
+    console.log('Session data received:', { hasClientSecret: !!data.client_secret, resourceName: data.resource_name });
+    
     const EPHEMERAL_KEY = data.client_secret.value;
 
-    // Get the resource name from the token response or environment
-    const resourceName = data.resource_name || process.env.NEXT_PUBLIC_AZURE_OPENAI_RESOURCE_NAME;
+    // Get the resource name from the token response
+    const resourceName = data.resource_name;
     
     // Validate resource name before attempting connection
     if (!resourceName || resourceName === 'YOUR_RESOURCE_NAME') {
       throw new Error('Azure OpenAI resource name is not properly configured. Please check your environment variables.');
     }
 
+    console.log('Initializing WebRTC connection...');
     pc = new RTCPeerConnection();
-    audioEl = audioElement; // ✅ Set from passed-in reference
+    audioEl = audioElement;
 
     pc.ontrack = (e) => {
+      console.log('Audio track received');
       audioEl.srcObject = e.streams[0];
     };
 
+    pc.onconnectionstatechange = () => {
+      console.log('WebRTC connection state:', pc.connectionState);
+    };
+
+    console.log('Getting user media...');
     mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
     mediaStream.getTracks().forEach(track => pc.addTrack(track, mediaStream));
 
     dc = pc.createDataChannel('oai-events');
+    dc.onopen = () => {
+      console.log('Data channel opened');
+    };
     dc.onmessage = (e) => {
       const message = JSON.parse(e.data);
       handleMessage(message);
     };
 
+    console.log('Creating WebRTC offer...');
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
 
-    const sdpResponse = await fetch(
-      `https://${resourceName}.realtimeapi-preview.ai.azure.com/v1/realtimertc?model=gpt-4o-mini-realtime-preview`,
-      {
-        method: 'POST',
-        body: offer.sdp,
-        headers: {
-          Authorization: `Bearer ${EPHEMERAL_KEY}`,
-          'Content-Type': 'application/sdp',
-        },
-      }
-    );
+    const realtimeUrl = `https://${resourceName}.realtimeapi-preview.ai.azure.com/v1/realtimertc?model=gpt-4o-mini-realtime-preview`;
+    console.log('Connecting to Azure OpenAI Realtime API:', realtimeUrl);
+
+    const sdpResponse = await fetch(realtimeUrl, {
+      method: 'POST',
+      body: offer.sdp,
+      headers: {
+        Authorization: `Bearer ${EPHEMERAL_KEY}`,
+        'Content-Type': 'application/sdp',
+      },
+    });
 
     if (!sdpResponse.ok) {
       const errorText = await sdpResponse.text();
+      console.error('Azure OpenAI API error:', errorText);
       throw new Error(`Failed to connect to Azure OpenAI: ${sdpResponse.status} ${sdpResponse.statusText} - ${errorText}`);
     }
     
+    console.log('Setting remote description...');
     const answer = {
       type: 'answer',
       sdp: await sdpResponse.text(),
     };
     await pc.setRemoteDescription(answer);
+    
+    console.log('WebRTC connection established successfully');
   } catch (error) {
     console.error('Connection failed:', error);
     disconnect();
@@ -81,6 +113,7 @@ export async function connect(audioElement) {
 }
 
 export function disconnect() {
+  console.log('Disconnecting...');
   if (dc) dc.close();
   if (pc) pc.close();
   if (mediaStream) mediaStream.getTracks().forEach(track => track.stop());
