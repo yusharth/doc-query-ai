@@ -25,29 +25,15 @@ interface ChatPageProps {
   onMenuClick?: () => void;
 }
 
-// Sample agent data
-// const agentData = {
-//   "1": { name: "Customer Support Agent", type: "RAG Chat" },
-//   "2": { name: "Product FAQ Bot", type: "RAG Chat" },
-//   "3": { name: "HR Policy Assistant", type: "RAG Chat" },
-//   "4": { name: "Technical Support", type: "RAG Chat" },
-//   "5": { name: "Sales Assistant", type: "RAG Chat" },
-//   "6": { name: "Onboarding Guide", type: "RAG Chat" },
-// };
-
 export default function ChatPage({ onMenuClick }: ChatPageProps) {
   const params = useParams();
   const agentId = params.agentId as string;
-  // const agent = agentData[agentId as keyof typeof agentData];
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
-      content: `Hello! I'm ${
-        // agent?.name ||
-        "your AI assistant"
-      }. How can I help you today?`,
+      content: `Hello! I'm your AI assistant. How can I help you today?`,
       sender: "agent",
       timestamp: new Date(),
     },
@@ -61,9 +47,7 @@ export default function ChatPage({ onMenuClick }: ChatPageProps) {
     { label: "Dashboard", href: "/" },
     { label: "Agents", href: "/agents" },
     {
-      label:
-        //  agent?.name ||
-        "Chat",
+      label: "Chat",
       isCurrentPage: true,
     },
   ];
@@ -87,6 +71,19 @@ export default function ChatPage({ onMenuClick }: ChatPageProps) {
 
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isLoading) return;
+
+    if (!API_URL || API_URL === "undefined") {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          content: "API configuration error. Please check your environment variables.",
+          sender: "error",
+          timestamp: new Date(),
+        },
+      ]);
+      return;
+    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -241,18 +238,8 @@ export default function ChatPage({ onMenuClick }: ChatPageProps) {
             </AvatarFallback>
           </Avatar>
           <div>
-            <h1 className="font-semibold">
-              {
-                // agent.name ||
-                "Dummy Agent Name"
-              }
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              {
-                // agent.type ||
-                "RAG Agent"
-              }
-            </p>
+            <h1 className="font-semibold">AI Assistant</h1>
+            <p className="text-sm text-muted-foreground">RAG Agent</p>
           </div>
           <div className="ml-auto flex items-center gap-2">
             <div className="flex items-center gap-1">

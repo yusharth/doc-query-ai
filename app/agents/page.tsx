@@ -6,26 +6,36 @@ import { AgentCard } from "@/components/agent-card"
 import { MobileBreadcrumb } from "@/components/mobile-breadcrumb"
 import { Bot, Plus, Search } from "lucide-react"
 
-// Sample agent data - in real app, this would come from your API/database
-
-
 // Simulate API delay for demonstration
 async function getAgents() {
   // In a real app, this would be your actual API call
   // await new Promise(resolve => setTimeout(resolve, 2000))
   // return agents
 try{
-  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/get_all_agents/`, {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  
+  if (!apiUrl) {
+    console.error('NEXT_PUBLIC_API_URL is not defined');
+    return [];
+  }
+
+  const response = await fetch(`${apiUrl}/get_all_agents/`, {
     headers: {
       'accept': 'application/json',
     },
   });
+  
+  if (!response.ok) {
+    console.error(`API request failed with status: ${response.status}`);
+    return [];
+  }
+  
   const data = await response.json();
 
-  return data.agents
+  return data.agents || [];
 }catch(e){
   console.log(e)
-  throw new Error('Error fetching agents')
+  return [];
 }
   
 }
@@ -86,7 +96,7 @@ export default async function AgentsListPage({ onMenuClick }: AgentsListPageProp
           </CardContent>
         </Card>
 
-        {agentsData.length === 0 ? (
+        {!agentsData || agentsData.length === 0 ? (
           <Card className="flex flex-col items-center justify-center p-10 text-center">
             <Bot className="mb-4 h-12 w-12 text-muted-foreground" />
             <h3 className="mb-2 text-xl font-semibold">No agents found</h3>
@@ -108,7 +118,7 @@ export default async function AgentsListPage({ onMenuClick }: AgentsListPageProp
           </div>
         )}
 
-        {agentsData.length > 0 && (
+        {agentsData && agentsData.length > 0 && (
           <CardFooter className="mt-6 justify-center border-t p-4">
             <Button variant="outline" size="sm">
               Load More

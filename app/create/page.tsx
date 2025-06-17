@@ -59,19 +59,22 @@ export default function CreateAgentPage({ onMenuClick }: CreateAgentPageProps) {
   ];
 
   const handleFileUpload = async () => {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+    
+    if (!apiUrl) {
+      throw new Error("API URL is not configured. Please check your environment variables.");
+    }
+
     const formData = new FormData();
     if (uploadedFile) {
       formData.append("file", uploadedFile);
     }
 
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/upload/`,
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
+      const response = await fetch(`${apiUrl}/upload/`, {
+        method: "POST",
+        body: formData,
+      });
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -91,6 +94,12 @@ export default function CreateAgentPage({ onMenuClick }: CreateAgentPageProps) {
   };
 
   const createAgent = async () => {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+    
+    if (!apiUrl) {
+      throw new Error("API URL is not configured. Please check your environment variables.");
+    }
+
     let taskId;
     
     try {
@@ -118,16 +127,13 @@ export default function CreateAgentPage({ onMenuClick }: CreateAgentPageProps) {
     };
 
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/create_agent/`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(agentData),
-        }
-      );
+      const response = await fetch(`${apiUrl}/create_agent/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(agentData),
+      });
 
       if (!response.ok) {
         const errorText = await response.text();
