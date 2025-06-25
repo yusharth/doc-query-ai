@@ -32,7 +32,8 @@ export class RTCService {
     try {
       const tokenResponse = await fetch(
         // "https://doc-query-backend.onrender.com/session",
-        "http://localhost:8000/session"
+        `${process.env.NEXT_PUBLIC_API_URL}/session` ||
+          `https://doc-query-backend.onrender.com/session`
       );
       if (!tokenResponse.ok) throw new Error("Failed to get session token");
       const data = await tokenResponse.json();
@@ -68,7 +69,8 @@ export class RTCService {
       await this.pc.setLocalDescription(offer);
 
       const sdpResponse = await fetch(
-        `https://swedencentral.realtimeapi-preview.ai.azure.com/v1/realtimertc?model=gpt-4o-mini-realtime-preview`,
+        `${process.env.NEXT_PUBLIC_SDP_URL}` ||
+          `https://swedencentral.realtimeapi-preview.ai.azure.com/v1/realtimertc?model=gpt-4o-mini-realtime-preview`,
         {
           method: "POST",
           body: offer.sdp,
