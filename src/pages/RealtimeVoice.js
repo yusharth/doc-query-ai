@@ -7,11 +7,12 @@ import StopIcon from '@mui/icons-material/Stop';
 import SendIcon from '@mui/icons-material/Send';
 import PowerIcon from '@mui/icons-material/PowerSettingsNew';
 import LinkIcon from '@mui/icons-material/Link';
-import { onUserMessage, onAssistantMessage, connect, disconnect, toggleSpeaking, sendCustomEvent } from '../services/rtcService';
+import { onUserMessage, onAssistantMessage, connect, disconnect, toggleSpeaking, sendCustomEvent, toggleTurnDetection } from '../services/rtcService';
 
 const ChatUI = () => {
   const [connected, setConnected] = useState(false);
   const [speaking, setSpeaking] = useState(false);
+  const [turnDetection, setTurnDetection] = useState(false);
   const [messages, setMessages] = useState([]);
   const [jsonEvent, setJsonEvent] = useState(
     JSON.stringify({
@@ -60,6 +61,12 @@ const ChatUI = () => {
     }
   };
 
+  const handleToggleTurnDetection = () => {
+        const newVal = !turnDetection;
+        setTurnDetection(newVal);
+        toggleTurnDetection(newVal);
+    };
+
   useEffect(() => {
     onUserMessage((msg) => {
         console.log('msguser', msg);
@@ -97,7 +104,7 @@ const ChatUI = () => {
             </CardContent>
           </Card>
 
-          <Stack direction="row" spacing={2} sx={{ mt: 3 }}>
+          <Stack direction="row" spacing={2} sx={{ mt: 3, flexWrap: 'wrap' }}>
             <Button
               variant="contained"
               startIcon={<LinkIcon />}
@@ -128,6 +135,15 @@ const ChatUI = () => {
             >
               {speaking ? 'Stop' : 'Speak'}
             </Button>
+            <Button
+            variant="outlined"
+            onClick={handleToggleTurnDetection}
+            disabled={!connected}
+            id="toggleTurnDetection"
+            color={turnDetection ? 'primary' : 'default'}
+        >
+            Turn Detection: {turnDetection ? 'On' : 'Off'}
+        </Button>
           </Stack>
         </Box>
 
