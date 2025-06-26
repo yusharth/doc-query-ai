@@ -16,7 +16,7 @@ const VoicePage = () => {
       className="flex flex-col bg-gray-100"
       style={{ height: "calc(100vh - 3.6rem)" }}
     >
-      <div className="flex-1 p-4">
+      <div className="flex-1">
         <VoiceUI />
       </div>
     </div>

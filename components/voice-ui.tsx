@@ -182,7 +182,10 @@ const VoiceUI = () => {
   }, [isConnected]);
 
   return (
-    <div className="flex flex-col" style={{ height: "calc(100vh - 3.6rem)" }}>
+    <div
+      className="flex flex-col h-[100%]"
+      // style={{ height: "calc(100vh - 3.6rem)" }}
+    >
       {/* Header */}
       <div className="border-b bg-background p-4">
         <div className="flex items-center gap-3">
@@ -211,7 +214,7 @@ const VoiceUI = () => {
       </div>
 
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto p-4 bg-background">
         <div className="mx-auto max-w-3xl space-y-4">
           {messages.map((message, idx) => (
             <div
@@ -288,7 +291,7 @@ const VoiceUI = () => {
               variant="outline"
               onClick={handleDisconnect}
               disabled={!connected}
-              className="text-red-600 border-red-600 hover:bg-red-50"
+              className="text-red-600 border-red-600 hover:bg-red-500"
             >
               <PowerIcon className="mr-2 h-4 w-4" />
               Disconnect
