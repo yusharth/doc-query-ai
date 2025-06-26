@@ -21,6 +21,11 @@ export function DashboardSidebar({
     { name: "Dashboard", href: "/", icon: Home },
     { name: "Create Agent", href: "/create", icon: Plus },
     { name: "Agents List", href: "/agents", icon: Bot },
+    {
+      name: "Voice Agent",
+      href: "/voice",
+      icon: Bot,
+    },
   ];
 
   const SidebarContent = () => (

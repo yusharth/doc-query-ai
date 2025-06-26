@@ -85,11 +85,10 @@ export function AgentCard({ agent }: AgentCardProps) {
           </div>
           <div className="flex gap-2">
             <Button size="sm" variant="outline" asChild>
-              <Link href={`/voice/`}>
-                {/* <Link href={`/voice/${agent.task_id}`}> */}
+              {/* <Link href={`/voice/`}>
                 <Mic className="mr-2 h-4 w-4" />
                 Voice
-              </Link>
+              </Link> */}
             </Button>
             <Button size="sm" asChild>
               <Link href={`/chat/${agent.task_id}`}>
