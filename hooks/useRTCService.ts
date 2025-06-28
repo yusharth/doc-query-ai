@@ -73,6 +73,14 @@ export function useRTCService() {
     serviceRef.current?.toggleTurnDetection(enable);
   }, []);
 
+  const isTurnDetectionEnabled = useCallback(() => {
+    return serviceRef.current?.isTurnDetectionEnabled() || false;
+  }, []);
+
+  const forceRefreshTurnDetection = useCallback(() => {
+    serviceRef.current?.forceRefreshTurnDetection();
+  }, []);
+
   return {
     connect,
     disconnect,
@@ -83,5 +91,7 @@ export function useRTCService() {
     getConnectionState,
     isConnected,
     toggleTurnDetection,
+    isTurnDetectionEnabled,
+    forceRefreshTurnDetection,
   };
 }

@@ -89,11 +89,77 @@ export class RTCService {
         sdp: await sdpResponse.text(),
       };
       await this.pc.setRemoteDescription(answer as RTCSessionDescriptionInit);
+
+      // Wait for connection to be established
+      await this.waitForConnection();
+
+      // Wait a bit more for the data channel to be ready
+      await this.waitForDataChannel();
+
+      // Initialize turn detection by default
+      this.turnDetectionEnabled = true;
+      console.log("Configuring turn detection...");
+      this.sendMessage({
+        type: "session.update",
+        session: {
+          turn_detection: {
+            type: "server_vad",
+            threshold: 0.5,
+            prefix_padding_ms: 300,
+            silence_duration_ms: 500,
+          },
+        },
+      });
     } catch (error) {
       console.error("Connection failed:", error);
       this.disconnect();
       throw error;
     }
+  }
+
+  private async waitForConnection(): Promise<void> {
+    return new Promise((resolve) => {
+      if (this.pc?.connectionState === "connected") {
+        resolve();
+        return;
+      }
+
+      const checkConnection = () => {
+        if (this.pc?.connectionState === "connected") {
+          resolve();
+        } else if (
+          this.pc?.connectionState === "failed" ||
+          this.pc?.connectionState === "closed"
+        ) {
+          throw new Error("Connection failed");
+        } else {
+          setTimeout(checkConnection, 100);
+        }
+      };
+
+      checkConnection();
+    });
+  }
+
+  private async waitForDataChannel(): Promise<void> {
+    return new Promise((resolve) => {
+      if (this.dc?.readyState === "open") {
+        resolve();
+        return;
+      }
+
+      const checkDataChannel = () => {
+        if (this.dc?.readyState === "open") {
+          resolve();
+        } else if (this.dc?.readyState === "closed") {
+          throw new Error("Data channel closed");
+        } else {
+          setTimeout(checkDataChannel, 100);
+        }
+      };
+
+      checkDataChannel();
+    });
   }
 
   disconnect() {
@@ -135,19 +201,37 @@ export class RTCService {
   }
 
   private handleMessage(message: any) {
-    console.log("Received:", message);
+    console.log("Received message:", message);
 
     if (
       message.type ===
         "conversation.item.input_audio_transcription.completed" ||
       message.type === "conversation.item.input_audio_transcription.partial"
     ) {
+      console.log(
+        "Processing transcription:",
+        message.type,
+        message.transcript
+      );
+      // Show both partial and completed transcriptions for debugging
       this.userMessageCallback(message.transcript);
     } else if (
       message.type === "response.audio_transcript.done" ||
       message.type === "response.audio_transcript.partial"
     ) {
+      console.log(
+        "Processing assistant response:",
+        message.type,
+        message.transcript
+      );
+      // Show both partial and completed assistant responses
       this.assistantMessageCallback(message.transcript);
+    } else if (message.type === "session.update") {
+      console.log("Session updated:", message);
+    } else if (message.type === "error") {
+      console.error("RTC Error:", message);
+    } else {
+      console.log("Unhandled message type:", message.type, message);
     }
   }
 
@@ -175,6 +259,8 @@ export class RTCService {
     }
 
     this.turnDetectionEnabled = enable;
+    console.log(`Toggling turn detection to: ${enable}`);
+
     const sessionUpdate = {
       type: "session.update",
       session: {
@@ -189,5 +275,43 @@ export class RTCService {
       },
     };
     this.sendMessage(sessionUpdate);
+    console.log(`Turn detection ${enable ? "enabled" : "disabled"}`);
+  }
+
+  forceRefreshTurnDetection() {
+    if (this.pc?.connectionState !== "connected") {
+      console.warn("Cannot refresh turn detection - not connected");
+      return;
+    }
+
+    console.log("Force refreshing turn detection...");
+
+    // First disable
+    this.sendMessage({
+      type: "session.update",
+      session: {
+        turn_detection: null,
+      },
+    });
+
+    // Then re-enable after a short delay
+    setTimeout(() => {
+      this.sendMessage({
+        type: "session.update",
+        session: {
+          turn_detection: {
+            type: "server_vad",
+            threshold: 0.5,
+            prefix_padding_ms: 300,
+            silence_duration_ms: 500,
+          },
+        },
+      });
+      console.log("Turn detection refreshed");
+    }, 500);
+  }
+
+  isTurnDetectionEnabled(): boolean {
+    return this.turnDetectionEnabled;
   }
 }
