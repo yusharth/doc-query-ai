@@ -290,7 +290,7 @@ When faced with complex or technical inquiries, you ask insightful follow-up que
     this.isSpeaking = false;
   }
 
-  toggleSpeaking(systemPrompt?: string) {
+  toggleSpeaking() {
     this.isSpeaking = !this.isSpeaking;
 
     if (this.isSpeaking) {
@@ -299,7 +299,7 @@ When faced with complex or technical inquiries, you ask insightful follow-up que
       this.sendMessage({ type: "input_audio_buffer.commit" });
       this.sendMessage({
         type: "response.create",
-        ...(systemPrompt ? { system_prompt: systemPrompt } : {})
+        // ...(systemPrompt ? { system_prompt: systemPrompt } : {})
       });
     }
   }
